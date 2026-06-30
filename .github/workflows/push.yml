@@ -26,32 +26,22 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: DEBUG - verify push.py content
-        run: |
-          echo "===== push.py 檔案內容檢查 ====="
-          echo "檔案大小：" $(wc -l < push.py) "行"
-          echo "搜尋 SCRIPT VERSION："
-          grep -n "SCRIPT VERSION" push.py || echo "❌ 找不到 SCRIPT VERSION"
-          echo "搜尋 LibreTranslate："
-          grep -n "LibreTranslate" push.py || echo "❌ 找不到 LibreTranslate"
-          echo "================================"
-
       - name: Run push script
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
         run: python push.py
 
-      - name: Save seen_ids back to repo
+      - name: Save seen_ids and latest.txt back to repo
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add seen_ids.json
+          git add seen_ids.json latest.txt
           if git diff --staged --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "chore: update seen_ids [skip ci]"
+          git commit -m "chore: update seen_ids and latest.txt [skip ci]"
           success=false
           for i in 1 2 3 4 5; do
             git fetch origin main
