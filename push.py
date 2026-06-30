@@ -169,6 +169,9 @@ def format_message(item: dict) -> str:
 
 # ── 主流程 ────────────────────────────────────────
 def main():
+    print("=" * 50)
+    print("🔖 SCRIPT VERSION: v3-libretranslate-20260630")
+    print("=" * 50)
     print(f"\n🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} 開始檢查快訊…\n")
 
     seen = load_seen()
