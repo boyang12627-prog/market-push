@@ -87,13 +87,27 @@ def save_seen(ids: set):
         json.dump(trimmed, f)
 
 
+def translate_to_zh(text: str) -> str:
+    """用 Google 免費翻譯端口將英文轉做繁體中文"""
+    try:
+        url = ("https://translate.googleapis.com/translate_a/single"
+               "?client=gtx&sl=en&tl=zh-TW&dt=t&q=" + urllib.parse.quote(text))
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        return "".join(seg[0] for seg in data[0])
+    except Exception as e:
+        print(f"    ⚠️ 翻譯失敗，使用原文：{e}")
+        return text
+
+
 def send_telegram(text: str):
     url  = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     body = json.dumps({
         "chat_id":    CHAT_ID,
         "text":       text,
         "parse_mode": "HTML",
-        "disable_web_page_preview": False,
+        "disable_web_page_preview": True,
     }).encode()
     req = urllib.request.Request(url, data=body,
                                  headers={"Content-Type": "application/json"})
@@ -105,9 +119,10 @@ def send_telegram(text: str):
 
 def format_message(item: dict) -> str:
     cat = categorize(item["title"])
+    title_zh = translate_to_zh(item["title"])
     return (
         f"{cat}  <b>{item['source']}</b>\n"
-        f"{item['title']}\n"
+        f"{title_zh}\n"
         f"🔗 <a href=\"{item['link']}\">閱讀詳情</a>"
     )
 
