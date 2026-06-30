@@ -167,10 +167,32 @@ def format_message(item: dict) -> str:
     )
 
 
+def write_latest_txt(items: list[dict], translations: dict, count: int = 5):
+    """
+    寫一個純文字檔 latest.txt，供 KWGT widget 用 URL 讀取顯示。
+    translations: {item_id: 中文標題} 的對照表，避免重複翻譯
+    """
+    lines = []
+    now_str = datetime.now(timezone.utc).strftime('%H:%M UTC')
+    lines.append(f"📊 美股快訊 · 更新於 {now_str}")
+    lines.append("")
+
+    for item in items[:count]:
+        cat = categorize(item["title"])
+        title_zh = translations.get(item["id"], item["title"])
+        lines.append(f"{cat} {title_zh}")
+        lines.append("")
+
+    with open("latest.txt", "w", encoding="utf-8") as f:
+        f.write("\n".join(lines).strip())
+
+    print(f"  📝 已寫入 latest.txt（{min(count, len(items))} 條，供 widget 使用）")
+
+
 # ── 主流程 ────────────────────────────────────────
 def main():
     print("=" * 50)
-    print("🔖 SCRIPT VERSION: v3-libretranslate-20260630")
+    print("🔖 SCRIPT VERSION: v4-widget-output-20260630")
     print("=" * 50)
     print(f"\n🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} 開始檢查快訊…\n")
 
@@ -184,15 +206,28 @@ def main():
         print(f"  ✅ {source}：{len(items)} 條")
         all_items.extend(items)
 
-    # 去重
-    unique = {i["id"]: i for i in all_items}.values()
+    # 去重，並按抓取順序排列（feed 本身通常已按時間排序，最新在前）
+    seen_ids_in_order = []
+    unique_map = {}
+    for i in all_items:
+        if i["id"] not in unique_map:
+            unique_map[i["id"]] = i
+            seen_ids_in_order.append(i["id"])
+    unique = [unique_map[i] for i in seen_ids_in_order]
 
-    # 篩出新快訊
+    # 篩出新快訊（未推送過的）
     new_items = [i for i in unique if i["id"] not in seen]
-    print(f"\n🆕 新快訊：{len(new_items)} 條（共 {len(list(unique))} 條）\n")
+    print(f"\n🆕 新快訊：{len(new_items)} 條（共 {len(unique)} 條）\n")
+
+    # ── 無論有冇新快訊，都更新 widget 用的 latest.txt（永遠顯示頭5條最新） ──
+    translations_for_widget = {}
+    widget_source_items = unique[:5]
+    for item in widget_source_items:
+        translations_for_widget[item["id"]] = translate_to_zh(item["title"])
+    write_latest_txt(unique, translations_for_widget, count=5)
 
     if not new_items:
-        print("✅ 沒有新快訊，不推送。")
+        print("✅ 沒有新快訊，不推送 Telegram。")
         return
 
     # 推送（最多一次推 10 條，避免刷屏）
