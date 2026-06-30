@@ -1,0 +1,13 @@
+name: Test Cron Schedule
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # 每5分鐘執行一次，純粹測試排程是否生效
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo test message
+        run: echo "✅ Cron 排程成功觸發！時間：$(date -u)"
