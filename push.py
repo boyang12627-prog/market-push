@@ -39,7 +39,6 @@ def fetch_rss(url: str, source: str) -> list[dict]:
         ns = {"atom": "http://www.w3.org/2005/Atom"}
         items = []
 
-        # RSS 2.0
         for item in root.findall(".//item"):
             title = (item.findtext("title") or "").strip()
             link  = (item.findtext("link")  or "").strip()
@@ -48,7 +47,6 @@ def fetch_rss(url: str, source: str) -> list[dict]:
                 items.append({"id": hashlib.md5(guid.encode()).hexdigest(),
                               "title": title, "link": link, "source": source})
 
-        # Atom
         for entry in root.findall("atom:entry", ns):
             title = (entry.findtext("atom:title", namespaces=ns) or "").strip()
             link_el = entry.find("atom:link", ns)
@@ -81,7 +79,6 @@ def load_seen() -> set:
 
 
 def save_seen(ids: set):
-    # 只保留最新 500 條，避免檔案無限增長
     trimmed = list(ids)[-500:]
     with open(SEEN_FILE, "w") as f:
         json.dump(trimmed, f)
@@ -134,17 +131,14 @@ def main():
     seen = load_seen()
     print(f"📂 已記錄 {len(seen)} 條歷史快訊\n")
 
-    # 抓取所有 feed
     all_items = []
     for source, url in RSS_FEEDS:
         items = fetch_rss(url, source)
         print(f"  ✅ {source}：{len(items)} 條")
         all_items.extend(items)
 
-    # 去重
     unique = {i["id"]: i for i in all_items}.values()
 
-    # 篩出新快訊
     new_items = [i for i in unique if i["id"] not in seen]
     print(f"\n🆕 新快訊：{len(new_items)} 條（共 {len(list(unique))} 條）\n")
 
@@ -152,7 +146,6 @@ def main():
         print("✅ 沒有新快訊，不推送。")
         return
 
-    # 推送（最多一次推 10 條，避免刷屏）
     to_push = list(new_items)[:10]
     pushed  = 0
 
@@ -166,7 +159,6 @@ def main():
         except Exception as e:
             print(f"  ❌ 推送失敗：{e}")
 
-    # 如果新快訊超過 10 條，加一條彙總提示
     remaining = len(new_items) - pushed
     if remaining > 0:
         try:
