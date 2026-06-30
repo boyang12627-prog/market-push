@@ -2,6 +2,7 @@
 """
 MarketPulse Telegram Bot
 每次執行只推送「上次未見過」的新快訊
+VERSION: v3-libretranslate (確認此行存在即代表已更新到最新版)
 """
 
 import os, json, hashlib, urllib.request, urllib.parse, xml.etree.ElementTree as ET
@@ -90,7 +91,25 @@ def save_seen(ids: set):
 def translate_to_zh(text: str) -> str:
     """嘗試多個免費翻譯服務，將英文轉做繁體中文"""
 
-    # 方案一：Google 翻譯（免費端口）
+    # 方案一：LibreTranslate 公共伺服器（對雲端伺服器較友善）
+    try:
+        url = "https://libretranslate.de/translate"
+        body = json.dumps({
+            "q": text, "source": "en", "target": "zh", "format": "text"
+        }).encode()
+        req = urllib.request.Request(url, data=body, headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0"
+        })
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read())
+        result = data.get("translatedText", "")
+        if result and result.strip() != text.strip():
+            return result
+    except Exception as e:
+        print(f"    ⚠️ LibreTranslate失敗：{type(e).__name__}: {e}")
+
+    # 方案二：Google 翻譯（免費端口）
     try:
         url = ("https://translate.googleapis.com/translate_a/single"
                "?client=gtx&sl=en&tl=zh-TW&dt=t&q=" + urllib.parse.quote(text))
@@ -103,9 +122,9 @@ def translate_to_zh(text: str) -> str:
         if result and result.strip() != text.strip():
             return result
     except Exception as e:
-        print(f"    ⚠️ Google翻譯失敗：{e}")
+        print(f"    ⚠️ Google翻譯失敗：{type(e).__name__}: {e}")
 
-    # 方案二：MyMemory 翻譯（免費，無需key）
+    # 方案三：MyMemory 翻譯（免費，無需key）
     try:
         url = ("https://api.mymemory.translated.net/get"
                "?q=" + urllib.parse.quote(text) + "&langpair=en|zh-TW")
@@ -116,7 +135,7 @@ def translate_to_zh(text: str) -> str:
         if result and result.strip() != text.strip():
             return result
     except Exception as e:
-        print(f"    ⚠️ MyMemory翻譯失敗：{e}")
+        print(f"    ⚠️ MyMemory翻譯失敗：{type(e).__name__}: {e}")
 
     print(f"    ⚠️ 所有翻譯方案都失敗，使用英文原文")
     return text
