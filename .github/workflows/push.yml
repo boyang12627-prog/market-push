@@ -1,0 +1,41 @@
+name: MarketPulse Telegram Push
+
+on:
+  schedule:
+    # 每15分鐘執行一次（美股交易時段加密，非交易時段每30分鐘）
+    # UTC 13:30–20:00 = 美東 09:30–16:00（交易時段）
+    - cron: '*/15 13-20 * * 1-5'   # 週一至五 交易時段 每15分鐘
+    - cron: '*/30 0-13 * * 1-5'    # 週一至五 非交易時段 每30分鐘
+    - cron: '0 */1 * * 0,6'        # 週末 每小時
+  workflow_dispatch:                 # 允許手動觸發（測試用）
+
+jobs:
+  push-news:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write              # 需要讀寫 seen_ids.json
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run push script
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
+        run: python push.py
+
+      - name: Save seen_ids back to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen_ids.json
+          git diff --staged --quiet || git commit -m "chore: update seen_ids [skip ci]"
+          git push
